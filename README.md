@@ -1,6 +1,9 @@
 # json-cleaner README
 
 "json-cleaner"
+
+\!\[Video\]\(https://github.com/julioroldan/json-cleaner/blob/master/images/video.gif\)
+
 This extension was created to solve a personal problem that I needed to clean Json in my projects and in my work.
 
 It's simple, select the properties you need to delete and it will delete you from your json tree that you have created.
@@ -22,8 +25,6 @@ Elije las propiedades necesarias y copialo al portapapeles, actualizar el archiv
 
 Select the properties you need to delete and it will delete you from your json tree that you have created.
 
-
-\!\[Video\]\(images/video.gif\)
 
 
 ### 1.0.0
