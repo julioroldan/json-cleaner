@@ -16,16 +16,52 @@
       "package-explorer": [
         {
           "id": "package-Arbol",
-          "name": "Json Arbol"
+          "name": "Tree Json"
         }
       ]
     },
     "commands": [
       {
-        "command": "json-cleaner.helloWorld",
-        "title": "Hello World"
+        "command": "nodeDependencies.updateJson",
+        "title": "update Json",
+        "icon": {
+          "light": "resources/update.svg",
+          "dark": "resources/update.svg"
+        }
+      },
+      {
+        "command": "nodeDependencies.newFile",
+        "title": "New File",
+        "icon": {
+          "light": "resources/newFile.svg",
+          "dark": "resources/newFile.svg"
+        }
+      },
+      {
+        "command": "nodeDependencies.updateDocument",
+        "title": "change File",
+        "icon": {
+          "light": "resources/changeFile.svg",
+          "dark": "resources/changeFile.svg"
+        }
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [{
+        "command": "nodeDependencies.updateJson",
+        "group": "navigation"
+      },
+        {
+          "command": "nodeDependencies.newFile",
+          "group": "navigation"
+        },
+        {
+          "command": "nodeDependencies.updateDocument",
+          "group": "navigation"
+        }
+        
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -36,14 +72,18 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.86.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/uuid": "^9.0.8",
+    "@types/vscode": "^1.86.0",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3",
     "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.9"
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1"
   }
 }
