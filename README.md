@@ -22,7 +22,8 @@ Elije las propiedades necesarias y copialo al portapapeles, actualizar el archiv
 
 Select the properties you need to delete and it will delete you from your json tree that you have created.
 
-\!\[Video\]\(images/Part01.mp4\)
+
+\!\[Video\]\(images/video.gif\)
 
 
 ### 1.0.0
