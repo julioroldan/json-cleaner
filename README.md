@@ -2,7 +2,7 @@
 
 "json-cleaner"
 
-\!\[Video\]\(https://github.com/julioroldan/json-cleaner/blob/master/images/video.gif\)
+![Video](https://raw.githubusercontent.com/julioroldan/json-cleaner/master/images/video.gif?token=GHSAT0AAAAAACNYGIB7ZU2XUYMMAO7OQBNWZO724OA)
 
 This extension was created to solve a personal problem that I needed to clean Json in my projects and in my work.
 
