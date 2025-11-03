@@ -10,7 +10,8 @@ export class TreeNode {
     public isArray:boolean,
     public checked: boolean,
     public children: TreeNode[] = [],
-    public parent: TreeNode | null = null
+    public parent: TreeNode | null = null,
+    public value?: any // Valor primitivo si isSheet es true
   ) {
     this.id = uuidv4();
   }

@@ -48,14 +48,24 @@ export class CheckTreeDataProvider implements vscode.TreeDataProvider<TreeNode> 
     return this.treeData[0];
   }
   getTreeItem(element: TreeNode): vscode.TreeItem {
-    const treeItem = new vscode.TreeItem(element.label);
-    treeItem.collapsibleState = element.children ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
-if (element.isSheet)
-{
+    // Si es una hoja (primitivo), mostrar el valor en el label
+    const displayLabel = element.isSheet && element.value !== undefined 
+      ? `${element.label}: ${element.value}` 
+      : element.label;
+    
+    const treeItem = new vscode.TreeItem(displayLabel);
+    treeItem.collapsibleState = element.children && element.children.length > 0 
+      ? vscode.TreeItemCollapsibleState.Collapsed 
+      : vscode.TreeItemCollapsibleState.None;
 
-  treeItem.iconPath = new vscode.ThemeIcon('symbol-text');
-}
-else  if (element.checked) {
+    if (element.isSheet) {
+      // Icono diferente para hojas según si están seleccionadas
+      if (element.checked) {
+        treeItem.iconPath = new vscode.ThemeIcon('check');
+      } else {
+        treeItem.iconPath = new vscode.ThemeIcon('close');
+      }
+    } else if (element.checked) {
       treeItem.iconPath = new vscode.ThemeIcon('pass-filled');
     } else {
       treeItem.iconPath = new vscode.ThemeIcon('circle-large-outline');
@@ -64,7 +74,7 @@ else  if (element.checked) {
     treeItem.command = {
       command: 'extension.treeItemClicked',
       title: 'hola',
-      tooltip:"Seleccion",
+      tooltip: "Seleccion",
       arguments: [element],
     };
 

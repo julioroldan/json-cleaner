@@ -1,5 +1,6 @@
 {
   "name": "json-cleaner",
+  "publisher": "JulioRoldan",
   "displayName": "Json-Cleaner",
   "description": "It is an extension to clean Json and only have the properties we need, clean and easy.",
   "version": "0.0.1",
@@ -44,22 +45,42 @@
           "light": "resources/changeFile.svg",
           "dark": "resources/changeFile.svg"
         }
+      },
+      {
+        "command": "nodeDependencies.togglePreview",
+        "title": "Toggle JSON Preview",
+        "icon": "$(split-horizontal)"
       }
     ],
     "menus": {
-      "view/title": [{
-        "command": "nodeDependencies.updateJson",
-        "group": "navigation"
-      },
+      "view/title": [
+        {
+          "command": "nodeDependencies.togglePreview",
+          "when": "view == package-Arbol",
+          "group": "navigation@0"
+        },
+        {
+          "command": "nodeDependencies.updateJson",
+          "when": "view == package-Arbol",
+          "group": "navigation@1"
+        },
         {
           "command": "nodeDependencies.newFile",
-          "group": "navigation"
+          "when": "view == package-Arbol",
+          "group": "navigation@2"
         },
         {
           "command": "nodeDependencies.updateDocument",
+          "when": "view == package-Arbol",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "nodeDependencies.togglePreview",
+          "when": "resourceLangId == json",
           "group": "navigation"
         }
-        
       ]
     }
   },
@@ -85,5 +106,6 @@
   },
   "dependencies": {
     "uuid": "^9.0.1"
-  }
+  },
+  "license":"license.txt"
 }
