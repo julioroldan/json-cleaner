@@ -3,7 +3,7 @@
   "publisher": "JulioRoldan",
   "displayName": "Json-Cleaner",
   "description": "Clean and filter JSON files easily. Select only the properties you need with an interactive tree view and live preview.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "engines": {
     "vscode": "^1.86.0"
   },
