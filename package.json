@@ -23,14 +23,6 @@
     },
     "commands": [
       {
-        "command": "nodeDependencies.updateJson",
-        "title": "update Json",
-        "icon": {
-          "light": "resources/update.svg",
-          "dark": "resources/update.svg"
-        }
-      },
-      {
         "command": "nodeDependencies.newFile",
         "title": "New File",
         "icon": {
@@ -39,17 +31,9 @@
         }
       },
       {
-        "command": "nodeDependencies.updateDocument",
-        "title": "change File",
-        "icon": {
-          "light": "resources/changeFile.svg",
-          "dark": "resources/changeFile.svg"
-        }
-      },
-      {
         "command": "nodeDependencies.togglePreview",
         "title": "Toggle JSON Preview",
-        "icon": "$(split-horizontal)"
+        "icon": "$(eye)"
       }
     ],
     "menus": {
@@ -60,19 +44,9 @@
           "group": "navigation@0"
         },
         {
-          "command": "nodeDependencies.updateJson",
-          "when": "view == package-Arbol",
-          "group": "navigation@1"
-        },
-        {
           "command": "nodeDependencies.newFile",
           "when": "view == package-Arbol",
-          "group": "navigation@2"
-        },
-        {
-          "command": "nodeDependencies.updateDocument",
-          "when": "view == package-Arbol",
-          "group": "navigation@3"
+          "group": "navigation@1"
         }
       ],
       "editor/title": [

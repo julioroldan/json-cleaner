@@ -9,6 +9,10 @@ let treeView: vscode.TreeView<TreeNode> | undefined;
 let previewPanel: vscode.WebviewPanel | undefined;
 let extensionContext: vscode.ExtensionContext | undefined;
 
+// Caché para guardar el estado del árbol por documento
+const documentTreeCache = new Map<string, TreeNode[]>();
+let currentDocumentUri: string | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
 	// Guardar el contexto globalmente
 	extensionContext = context;
@@ -46,7 +50,15 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.onDidCloseTextDocument((document) => {
 			if (document.languageId === 'json') {
-				disposeResources();
+				// Limpiar del caché el documento cerrado
+				const uri = document.uri.toString();
+				documentTreeCache.delete(uri);
+				
+				// Si era el documento actual, limpiar referencias
+				if (currentDocumentUri === uri) {
+					currentDocumentUri = undefined;
+					disposeResources();
+				}
 			}
 		})
 	);
@@ -59,7 +71,14 @@ function debounceRefresh(context: vscode.ExtensionContext, editor: vscode.TextEd
 		clearTimeout(refreshTimeout);
 	}
 	refreshTimeout = setTimeout(() => {
-		initializeExtension(context, editor);
+		// Validar que el JSON es parseable antes de actualizar
+		try {
+			JSON.parse(editor.document.getText());
+			initializeExtension(context, editor);
+		} catch {
+			// JSON inválido, mantener el estado actual sin actualizar
+			// Esto evita perder la selección durante edición o al descartar cambios
+		}
 	}, 500); // Espera 500ms después del último cambio
 }
 
@@ -69,8 +88,6 @@ function registerCommands(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('extension.refreshTreeView', handleRefreshTree),
 		vscode.commands.registerCommand('extension.refreshCounsinTreeView', handleRefreshCousin),
 		vscode.commands.registerCommand('nodeDependencies.newFile', handleNewFile),
-		vscode.commands.registerCommand('nodeDependencies.updateDocument', handleUpdateDocument),
-		vscode.commands.registerCommand('nodeDependencies.updateJson', handleUpdateJson),
 		vscode.commands.registerCommand('nodeDependencies.togglePreview', handleTogglePreview)
 	);
 }
@@ -78,23 +95,77 @@ function registerCommands(context: vscode.ExtensionContext) {
 function initializeExtension(context: vscode.ExtensionContext, editor: vscode.TextEditor) {
 	try {
 		const jsonContent = editor.document.getText();
+		const documentUri = editor.document.uri.toString();
+		
+		// Verificar si el URI del documento cambió
+		const documentChanged = currentDocumentUri !== documentUri;
+		if (documentChanged) {
+			// Guardar el estado del documento anterior en el caché
+			if (currentDocumentUri && treeDataProvider) {
+				const currentTree = treeDataProvider.getFull();
+				if (currentTree && currentTree.length > 0) {
+					documentTreeCache.set(currentDocumentUri, cloneTree(currentTree));
+				}
+			}
+			currentDocumentUri = documentUri;
+		}
+		
 		const jsonData = parseJson(jsonContent);
 		
 		if (jsonData.length === 0) {
-			vscode.window.showWarningMessage('No se pudo parsear el JSON');
+			// JSON inválido - intentar recuperar del caché
+			if (documentTreeCache.has(documentUri)) {
+				const cachedTree = documentTreeCache.get(documentUri)!;
+				if (!treeDataProvider) {
+					treeDataProvider = CheckTreeDataProvider.getInstance();
+				}
+				treeDataProvider.updateTree(cloneTree(cachedTree));
+				
+				if (!treeView) {
+					treeView = vscode.window.createTreeView('package-Arbol', { 
+						treeDataProvider, 
+						showCollapseAll: true 
+					});
+					context.subscriptions.push(treeView);
+				} else {
+					treeDataProvider.refresh();
+				}
+				return;
+			}
+			
+			// Si no hay árbol previo ni caché, mostrar warning solo la primera vez
+			if (!treeDataProvider || treeDataProvider.getFull().length === 0) {
+				vscode.window.showWarningMessage('No se pudo parsear el JSON');
+			}
 			return;
 		}
 		
 		// Crear o actualizar TreeDataProvider
 		if (!treeDataProvider) {
 			treeDataProvider = CheckTreeDataProvider.getInstance();
+			
+			// Intentar restaurar del caché
+			if (documentTreeCache.has(documentUri)) {
+				const cachedTree = documentTreeCache.get(documentUri)!;
+				preserveCheckedState(jsonData, cachedTree);
+			}
+			
 			treeDataProvider.updateTree(jsonData);
 		} else {
 			// Preservar el estado checked antes de actualizar
-			const oldTree = treeDataProvider.getFull();
+			let oldTree = treeDataProvider.getFull();
+			
+			// Si cambió de documento, usar el caché
+			if (documentChanged && documentTreeCache.has(documentUri)) {
+				oldTree = documentTreeCache.get(documentUri)!;
+			}
+			
 			preserveCheckedState(jsonData, oldTree);
 			treeDataProvider.updateTree(jsonData);
 		}
+		
+		// Guardar en caché el árbol actualizado
+		documentTreeCache.set(documentUri, cloneTree(jsonData));
 		
 		// Crear TreeView solo si no existe
 		if (!treeView) {
@@ -122,7 +193,8 @@ function initializeExtension(context: vscode.ExtensionContext, editor: vscode.Te
 		updatePreviewPanel(jsonData);
 		
 	} catch (error) {
-		vscode.window.showErrorMessage(`Error al inicializar: ${error}`);
+		// En caso de error, mantener el estado actual
+		console.error(`Error al inicializar: ${error}`);
 	}
 }
 
@@ -165,6 +237,24 @@ function applyCheckedState(nodes: TreeNode[], map: Map<string, boolean>) {
 	});
 }
 
+// Función para clonar profundamente el árbol
+function cloneTree(nodes: TreeNode[]): TreeNode[] {
+	return nodes.map(node => {
+		const clonedNode: TreeNode = {
+			label: node.label,
+			level: node.level,
+			isSheet: node.isSheet,
+			isArray: node.isArray,
+			checked: node.checked,
+			id: node.id,
+			value: node.value,
+			children: node.children ? cloneTree(node.children) : [],
+			parent: null // No clonar la referencia al padre para evitar referencias circulares
+		};
+		return clonedNode;
+	});
+}
+
 function createPreviewPanel(context: vscode.ExtensionContext): vscode.WebviewPanel {
 	const panel = vscode.window.createWebviewPanel(
 		'previewPanel',
@@ -182,9 +272,6 @@ function createPreviewPanel(context: vscode.ExtensionContext): vscode.WebviewPan
 			switch (message.command) {
 				case 'newFile':
 					await handleNewFile();
-					break;
-				case 'updateDocument':
-					await handleUpdateDocument();
 					break;
 			}
 		},
@@ -252,45 +339,6 @@ async function handleNewFile() {
 	}
 }
 
-async function handleUpdateDocument() {
-	const editor = vscode.window.activeTextEditor;
-	if (!editor || !treeDataProvider) {
-		vscode.window.showWarningMessage('No hay editor activo');
-		return;
-	}
-	
-	try {
-		const content = treeNodesToString(treeDataProvider);
-		const success = await editor.edit((editBuilder) => {
-			const document = editor.document;
-			const fullRange = new vscode.Range(
-				new vscode.Position(0, 0),
-				new vscode.Position(document.lineCount, 0)
-			);
-			editBuilder.replace(fullRange, content);
-		});
-		
-		if (success) {
-			// Formatear el documento
-			await vscode.commands.executeCommand('editor.action.formatDocument');
-			vscode.window.showInformationMessage('Documento actualizado correctamente');
-		}
-		
-	} catch (error) {
-		vscode.window.showErrorMessage(`Error al actualizar documento: ${error}`);
-	}
-}
-
-function handleUpdateJson() {
-	const editor = vscode.window.activeTextEditor;
-	if (!editor || !treeDataProvider) { return; }
-	
-	const jsonContent = editor.document.getText();
-	const jsonData = parseJson(jsonContent);
-	treeDataProvider.updateTree(jsonData);
-	updatePreviewPanel(jsonData);
-}
-
 function handleTogglePreview() {
 	if (!previewPanel) {
 		// Crear el panel si no existe
@@ -350,18 +398,28 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 	if (!previewPanel) { return; }
 	
 	try {
-		const resultArray = convertJsonToResultObject(treeNodes);
+		// Detectar si el JSON raíz es un array
+		const isRootArray = treeNodes.length > 0 && treeNodes[0]?.isArray;
 		
-		// Combinar resultados
 		let combinedResult: any;
-		if (Array.isArray(resultArray) && resultArray.length > 0) {
-			if (resultArray.every((item: any) => typeof item === 'object' && !Array.isArray(item))) {
-				combinedResult = Object.assign({}, ...resultArray);
-			} else {
-				combinedResult = resultArray;
-			}
+		
+		if (isRootArray) {
+			// Si es un array raíz, procesarlo como array
+			const arrayResult = processArrayNode(treeNodes);
+			combinedResult = arrayResult;
 		} else {
-			combinedResult = {};
+			// Si es un objeto raíz, procesar normalmente
+			const resultArray = convertJsonToResultObject(treeNodes);
+			
+			if (Array.isArray(resultArray) && resultArray.length > 0) {
+				if (resultArray.every((item: any) => typeof item === 'object' && !Array.isArray(item))) {
+					combinedResult = Object.assign({}, ...resultArray);
+				} else {
+					combinedResult = resultArray;
+				}
+			} else {
+				combinedResult = {};
+			}
 		}
 		
 		const resultJsonString = JSON.stringify(combinedResult, null, 2);
@@ -410,11 +468,6 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 									</button>
 								</td>
 								<td class="text-center">
-									<button type="button" onclick="callUpdateFile()" class="btn btn-secondary">
-										Update Document
-									</button>
-								</td>
-								<td class="text-center">
 									<button type="button" id="btnCreateFile" onclick="callNewFile()" class="btn btn-success">
 										New Document
 									</button>
@@ -439,13 +492,6 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 				vscode.postMessage({
 					command: 'newFile',
 					commandName: 'nodeDependencies.newFile'
-				});
-			}
-			
-			function callUpdateFile() {
-				vscode.postMessage({
-					command: 'updateDocument',
-					commandName: 'nodeDependencies.updateDocument'
 				});
 			}
 			
@@ -497,7 +543,7 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 
 
 
-  function convertJsonToResultObject(json: TreeNode[]): any {
+  function convertJsonToResultObject(json: TreeNode[], isArrayContext: boolean = false): any {
 	const result: any[] = [];
   
 	json.forEach((node) => {
@@ -505,20 +551,34 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 			return; // Si el nodo no está marcado, saltarlo
 		}
 		
-		// Caso 1: Nodo es hoja (primitivo) - usar el valor guardado
+		// Caso 1: Nodo es hoja (primitivo)
 		if (node.isSheet) {
-			result.push({ [node.label]: node.value !== undefined ? node.value : node.label });
+			// Si estamos en contexto de array, retornar solo el valor sin key
+			if (isArrayContext) {
+				result.push(node.value !== undefined ? node.value : node.label);
+			} else {
+				// Si es un objeto, retornar como { key: value }
+				result.push({ [node.label]: node.value !== undefined ? node.value : node.label });
+			}
 		}
 		// Caso 2: Nodo tiene hijos
 		else if (node.children && node.children.length > 0) {
-			// Caso 2.1: Array de elementos
-			if (node.children[0]?.isArray) {
+			// Caso 2.1: Array de primitivos (nodo marcado como isArray y sus hijos son hojas)
+			if (node.isArray && node.children[0]?.isSheet) {
+				// Array de primitivos: filtrar solo los checked
+				const primitiveArray = node.children
+					.filter(child => child.checked)
+					.map(child => child.value !== undefined ? child.value : child.label);
+				result.push({ [node.label]: primitiveArray });
+			}
+			// Caso 2.2: Array de objetos (los hijos tienen isArray=true)
+			else if (node.children[0]?.isArray) {
 				const arrayElements = processArrayNode(node.children);
 				result.push({ [node.label]: arrayElements });
 			}
-			// Caso 2.2: Objeto anidado
+			// Caso 2.3: Objeto anidado
 			else {
-				const childResults = convertJsonToResultObject(node.children || []);
+				const childResults = convertJsonToResultObject(node.children || [], false);
 				// Si todos los hijos son objetos simples, combinarlos
 				if (Array.isArray(childResults) && childResults.every((item: any) => typeof item === 'object')) {
 					const combinedChild = Object.assign({}, ...childResults);
@@ -560,17 +620,32 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 			return null; // Marcar para filtrar después
 		}
 		
-		// Si el nodo es una hoja (primitivo) - usar el valor guardado
-		if (node.isSheet) {
-			return node.value !== undefined ? node.value : node.label;
+		// Si el nodo tiene hijos
+		if (node.children && node.children.length > 0) {
+			// Verificar si es un array de primitivos:
+			// - Tiene solo 1 hijo
+			// - Ese hijo es una hoja (primitivo)
+			const isSinglePrimitive = node.children.length === 1 && node.children[0]?.isSheet;
+			
+			if (isSinglePrimitive) {
+				// Es un primitivo en el array - retornar solo el valor
+				return node.children[0].value !== undefined ? node.children[0].value : node.children[0].label;
+			} else {
+				// Es un objeto en el array - combinar todos los hijos
+				const childResults = convertJsonToResultObject(node.children, false);
+				const combinedResult = Object.assign({}, ...childResults);
+				
+				// Verificar si el objeto está vacío
+				if (Object.keys(combinedResult).length === 0) {
+					return null; // Filtrar objetos vacíos
+				}
+				
+				return combinedResult;
+			}
 		}
-		// Si el elemento del array es un objeto
-		else if (node.children && node.children.length > 0) {
-			const childResults = convertJsonToResultObject(node.children);
-			return Object.assign({}, ...childResults);
-		}
+		
 		return null;
-	}).filter(item => item !== null); // Filtrar elementos no seleccionados
+	}).filter(item => item !== null); // Filtrar elementos no seleccionados y objetos vacíos
   }
 
 function refreshTree() {
@@ -607,6 +682,12 @@ function onTreeItemClicked(node: TreeNode): void {
 	
 	// Refrescar la vista
 	refreshTree();
+	
+	// Actualizar el caché con el nuevo estado
+	if (currentDocumentUri && treeDataProvider) {
+		const currentTree = treeDataProvider.getFull();
+		documentTreeCache.set(currentDocumentUri, cloneTree(currentTree));
+	}
 }
 
 function parseJson(json: string): TreeNode[] {
@@ -618,8 +699,8 @@ function parseJson(json: string): TreeNode[] {
 		const parsedData = JSON.parse(json);
 		return convertToTreeNode(parsedData, 1);
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-		vscode.window.showErrorMessage(`Error al analizar JSON: ${errorMessage}`);
+		// No mostrar error si ya hay un árbol cargado (evita errores molestos durante edición)
+		// El error solo aparecerá si es la primera carga
 		return [];
 	}
 }
@@ -658,21 +739,47 @@ function convertToTreeNode(
 			                   typeof value === 'number' || 
 			                   typeof value === 'boolean';
 			
+			// Verificar si el valor es un array de primitivos
+			const isPrimitiveArray = Array.isArray(value) && 
+			                        value.length > 0 && 
+			                        value.every((item: any) => 
+			                            item === null || 
+			                            typeof item === 'string' || 
+			                            typeof item === 'number' || 
+			                            typeof item === 'boolean'
+			                        );
+			
 			const node: TreeNode = {
 				label: key,
 				id: uuidv4(),
 				checked: true,
 				isSheet: isPrimitive, // Marcar como hoja si es primitivo
-				isArray: false,
+				isArray: isPrimitiveArray, // Marcar como array si es array de primitivos
 				parent,
 				level,
 				children: [],
 				value: isPrimitive ? value : undefined // Guardar el valor si es primitivo
 			};
 			
-			// Solo procesar hijos si NO es primitivo
+			// Procesar hijos
 			if (!isPrimitive) {
-				node.children = convertToTreeNode(value, nextLevel, node);
+				if (isPrimitiveArray) {
+					// Array de primitivos: crear nodos directos sin wrapper numérico
+					node.children = value.map((item: any) => ({
+						label: String(item),
+						checked: true,
+						id: uuidv4(),
+						isSheet: true,
+						isArray: false,
+						parent: node,
+						level: nextLevel,
+						children: [],
+						value: item
+					}));
+				} else {
+					// Objeto o array de objetos: procesar normalmente
+					node.children = convertToTreeNode(value, nextLevel, node);
+				}
 			}
 			
 			return node;
