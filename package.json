@@ -2,14 +2,26 @@
   "name": "json-cleaner",
   "publisher": "JulioRoldan",
   "displayName": "Json-Cleaner",
-  "description": "It is an extension to clean Json and only have the properties we need, clean and easy.",
-  "version": "0.0.1",
+  "description": "Clean and filter JSON files easily. Select only the properties you need with an interactive tree view and live preview.",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.86.0"
   },
   "categories": [
+    "Formatters",
     "Other"
   ],
+  "keywords": [
+    "json",
+    "filter",
+    "clean",
+    "tree",
+    "preview"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/julioroldan/json-cleaner"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
