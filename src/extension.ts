@@ -438,52 +438,147 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
-		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js"></script>
 		<style>
-			body {
-				padding: 20px;
+			:root {
+				--button-primary-bg: var(--vscode-button-background, #0e639c);
+				--button-primary-fg: var(--vscode-button-foreground, #ffffff);
+				--button-primary-hover: var(--vscode-button-hoverBackground, #1177bb);
+				--button-secondary-bg: var(--vscode-button-secondaryBackground, #3a3d41);
+				--button-secondary-fg: var(--vscode-button-secondaryForeground, #ffffff);
+				--button-secondary-hover: var(--vscode-button-secondaryHoverBackground, #45494e);
 			}
+			
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			
+			body {
+				background-color: var(--vscode-editor-background, #1e1e1e);
+				color: var(--vscode-editor-foreground, #d4d4d4);
+				font-family: var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+				font-size: var(--vscode-font-size, 13px);
+				padding: 20px;
+				line-height: 1.6;
+			}
+			
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+			}
+			
+			.button-group {
+				display: flex;
+				gap: 10px;
+				justify-content: center;
+				margin-bottom: 20px;
+				flex-wrap: wrap;
+			}
+			
+			button {
+				background-color: var(--button-primary-bg);
+				color: var(--button-primary-fg);
+				border: 1px solid var(--vscode-button-border, transparent);
+				padding: 8px 16px;
+				border-radius: 2px;
+				cursor: pointer;
+				font-family: var(--vscode-font-family);
+				font-size: var(--vscode-font-size, 13px);
+				transition: background-color 0.2s ease;
+				outline: none;
+			}
+			
+			button:hover {
+				background-color: var(--button-primary-hover);
+			}
+			
+			button:focus {
+				outline: 1px solid var(--vscode-focusBorder, #007acc);
+				outline-offset: 2px;
+			}
+			
+			button.secondary {
+				background-color: var(--button-secondary-bg);
+				color: var(--button-secondary-fg);
+			}
+			
+			button.secondary:hover {
+				background-color: var(--button-secondary-hover);
+			}
+			
+			button.success {
+				background-color: var(--vscode-testing-iconPassed, #73c991);
+				color: var(--vscode-button-foreground, #ffffff);
+			}
+			
 			#json-container {
 				margin-top: 20px;
 			}
+			
 			pre {
-				background-color: #f5f5f5;
+				background-color: transparent;
+				color: var(--vscode-editor-foreground, #d4d4d4);
+				border: 1px solid var(--vscode-panel-border, #3c3c3c);
 				padding: 15px;
-				border-radius: 5px;
+				border-radius: 4px;
 				overflow-x: auto;
+				font-family: var(--vscode-editor-font-family, 'Consolas', 'Courier New', monospace);
+				font-size: var(--vscode-editor-font-size, 14px);
+				line-height: 1.5;
+			}
+			
+			code {
+				font-family: inherit;
+				background-color: transparent;
+			}
+			
+			/* Colores de sintaxis JSON adaptados al tema de VS Code */
+			.json-key {
+				color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+			}
+			
+			.json-string {
+				color: var(--vscode-symbolIcon-stringForeground, #ce9178);
+			}
+			
+			.json-number {
+				color: var(--vscode-symbolIcon-numberForeground, #b5cea8);
+			}
+			
+			.json-boolean {
+				color: var(--vscode-symbolIcon-booleanForeground, #569cd6);
+			}
+			
+			.json-null {
+				color: var(--vscode-symbolIcon-keywordForeground, #569cd6);
+			}
+			
+			.error-message {
+				background-color: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+				color: var(--vscode-inputValidation-errorForeground, #f48771);
+				border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+				padding: 12px;
+				border-radius: 4px;
+				margin-top: 20px;
 			}
 		</style>
 	</head>
 	<body>
 		<div class="container">
-			<div class="row justify-content-center mt-5">
-				<div class="col-12">
-					<table class="table">
-						<tbody>
-							<tr>
-								<td class="text-center">
-									<button type="button" onclick="copyContent()" id="btnModify" class="btn btn-primary">
-										Copy clipboard
-									</button>
-								</td>
-								<td class="text-center">
-									<button type="button" id="btnCreateFile" onclick="callNewFile()" class="btn btn-success">
-										New Document
-									</button>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
+			<div class="button-group">
+				<button type="button" onclick="copyContent()" id="btnModify">
+					Copy to Clipboard
+				</button>
+				<button type="button" id="btnCreateFile" onclick="callNewFile()" class="secondary">
+					New Document
+				</button>
 			</div>
-		</div>
 
-		<div id="json-container"></div>
+			<div id="json-container"></div>
+		</div>
 		
 		<script type="application/json" id="jsonData">${document}</script>
-		
-		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 		
 		<script>
 			const vscode = acquireVsCodeApi();
@@ -504,13 +599,11 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 					const btn = document.getElementById('btnModify');
 					const originalText = btn.textContent;
 					btn.textContent = 'Copied!';
-					btn.classList.add('btn-success');
-					btn.classList.remove('btn-primary');
+					btn.classList.add('success');
 					
 					setTimeout(() => {
 						btn.textContent = originalText;
-						btn.classList.remove('btn-success');
-						btn.classList.add('btn-primary');
+						btn.classList.remove('success');
 					}, 2000);
 				} catch (err) {
 					console.error('Error al copiar:', err);
@@ -518,7 +611,28 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 				}
 			}
 			
-			// Renderizar JSON con highlight
+			// Función para colorear JSON manualmente
+			function syntaxHighlight(json) {
+				json = JSON.stringify(json, null, 4);
+				json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+					let cls = 'json-number';
+					if (/^"/.test(match)) {
+						if (/:$/.test(match)) {
+							cls = 'json-key';
+						} else {
+							cls = 'json-string';
+						}
+					} else if (/true|false/.test(match)) {
+						cls = 'json-boolean';
+					} else if (/null/.test(match)) {
+						cls = 'json-null';
+					}
+					return '<span class="' + cls + '">' + match + '</span>';
+				});
+			}
+			
+			// Renderizar JSON con colores
 			document.addEventListener('DOMContentLoaded', () => {
 				const jsonDataElement = document.getElementById('jsonData');
 				const jsonContainer = document.getElementById('json-container');
@@ -526,12 +640,10 @@ function updatePreviewPanel(treeNodes: TreeNode[]) {
 				if (jsonDataElement) {
 					try {
 						const jsonData = JSON.parse(jsonDataElement.textContent);
-						jsonContainer.innerHTML = '<pre><code class="json">' + 
-							JSON.stringify(jsonData, null, 4) + 
-							'</code></pre>';
-						hljs.highlightAll();
+						const highlighted = syntaxHighlight(jsonData);
+						jsonContainer.innerHTML = '<pre><code>' + highlighted + '</code></pre>';
 					} catch (error) {
-						jsonContainer.innerHTML = '<div class="alert alert-danger">Error al parsear JSON</div>';
+						jsonContainer.innerHTML = '<div class="error-message">Error al parsear JSON: ' + error.message + '</div>';
 					}
 				}
 			});
