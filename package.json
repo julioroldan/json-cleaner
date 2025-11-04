@@ -93,5 +93,9 @@
   "dependencies": {
     "uuid": "^9.0.1"
   },
+  "overrides": {
+    "braces": "3.0.3",
+    "micromatch": "4.0.8"
+  },
   "license":"license.txt"
 }
