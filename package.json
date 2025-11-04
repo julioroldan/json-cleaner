@@ -28,6 +28,7 @@
     "views": {
       "package-explorer": [
         {
+          "icon": "",
           "id": "package-Arbol",
           "name": "Tree Json"
         }
